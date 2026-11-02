@@ -1,12 +1,12 @@
 @echo off
-chcp 936 >/dev/null
+chcp 936 >nul
 title 局域网文件传输
 cd /d "%~dp0"
 
-where python >/dev/null 2>/dev/null
+where python >nul 2>nul
 if errorlevel 1 goto nopython
 
-python -c "import sherpa_onnx, av, numpy, qrcode, PIL" >/dev/null 2>/dev/null
+python -c "import sherpa_onnx, av, numpy, qrcode, PIL" >nul 2>nul
 if errorlevel 1 goto installdeps
 goto checkmodel
 
@@ -26,7 +26,7 @@ if errorlevel 1 (
     echo 直连失败，改用清华镜像重试...
     python -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 )
-python -c "import sherpa_onnx" >/dev/null 2>/dev/null
+python -c "import sherpa_onnx" >nul 2>nul
 if errorlevel 1 goto depfail
 
 :checkmodel
