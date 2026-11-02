@@ -1,0 +1,5 @@
+sherpa-onnx>=1.10
+av>=12
+numpy
+qrcode>=7.4
+pillow

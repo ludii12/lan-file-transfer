@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 本机数据，不进仓库
+config.json
+文字记录.json
+证书/
+模型/
+分享文件/
+
+# 临时文件
+_*.png
+_*.wav
+_paste_*.json
+.pytest_cache/
