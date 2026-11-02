@@ -489,8 +489,7 @@ class TransferHandler(BaseHTTPRequestHandler):
 
         if path == "/api/settings":
             body = json.dumps({"autopaste": SETTINGS.autopaste,
-                               "model": _ASR is not None,
-                               "autostart": autostart_on()}, ensure_ascii=False)
+                               "model": _ASR is not None}, ensure_ascii=False)
             self._send(200, body.encode("utf-8"), "application/json; charset=utf-8")
             return
 
@@ -685,13 +684,6 @@ class TransferHandler(BaseHTTPRequestHandler):
             if "autopaste" in payload:
                 SETTINGS.set("autopaste", bool(payload["autopaste"]))
                 self.log(f"自动粘贴：{'开' if SETTINGS.autopaste else '关'}  ← {self.client_address[0]}")
-            if "autostart" in payload:
-                try:
-                    set_autostart(bool(payload["autostart"]))
-                except OSError as exc:
-                    self._json(500, {"ok": False, "error": str(exc)})
-                    return
-                self.log(f"开机自启：{'开' if autostart_on() else '关'}  ← {self.client_address[0]}")
             if "model" in payload:
                 if payload["model"]:
                     get_asr()
@@ -700,7 +692,7 @@ class TransferHandler(BaseHTTPRequestHandler):
                     release_asr()
                     self.log(f"语音模型已释放  ← {self.client_address[0]}")
             self._json(200, {"ok": True, "autopaste": SETTINGS.autopaste,
-                             "model": _ASR is not None, "autostart": autostart_on()})
+                             "model": _ASR is not None})
             return
 
         if parsed.path == "/api/text":
