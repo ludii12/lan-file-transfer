@@ -198,6 +198,8 @@
       <div class="popover" id="setpop" hidden>
         <div class="setrow"><span class="lbl">自动粘贴到电脑</span>
           <label class="sw"><input type="checkbox" id="autopaste"><span class="track"></span></label></div>
+        <div class="setrow"><span class="lbl">开机自启动</span>
+          <label class="sw"><input type="checkbox" id="autostart"><span class="track"></span></label></div>
         <div class="setrow"><span class="lbl">模型常驻内存（450MB）</span>
           <label class="sw"><input type="checkbox" id="warm"><span class="track"></span></label></div>
         <div class="setrow"><span class="lbl">显示输入框</span>
@@ -690,8 +692,29 @@ async function loadSettings() {
     if (document.activeElement !== cb) cb.checked = !!s.autopaste;
     const warm = $('#warm');
     if (document.activeElement !== warm && !warm.disabled) warm.checked = !!s.model;
+    const auto = $('#autostart');
+    if (document.activeElement !== auto && !auto.disabled) auto.checked = !!s.autostart;
   } catch (e) {}
 }
+
+$('#autostart').onchange = async e => {
+  const cb = e.target;
+  cb.disabled = true;
+  try {
+    const r = await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ autostart: cb.checked })
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+    const d = await r.json();
+    cb.checked = !!d.autostart;
+  } catch (err) {
+    cb.checked = !cb.checked;
+    alert('设置失败：' + err.message);
+  } finally {
+    cb.disabled = false;
+  }
+};
 
 $('#warm').onchange = async e => {
   const cb = e.target;

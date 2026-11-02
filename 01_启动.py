@@ -489,7 +489,8 @@ class TransferHandler(BaseHTTPRequestHandler):
 
         if path == "/api/settings":
             body = json.dumps({"autopaste": SETTINGS.autopaste,
-                               "model": _ASR is not None}, ensure_ascii=False)
+                               "model": _ASR is not None,
+                               "autostart": autostart_on()}, ensure_ascii=False)
             self._send(200, body.encode("utf-8"), "application/json; charset=utf-8")
             return
 
@@ -684,6 +685,13 @@ class TransferHandler(BaseHTTPRequestHandler):
             if "autopaste" in payload:
                 SETTINGS.set("autopaste", bool(payload["autopaste"]))
                 self.log(f"自动粘贴：{'开' if SETTINGS.autopaste else '关'}  ← {self.client_address[0]}")
+            if "autostart" in payload:
+                try:
+                    set_autostart(bool(payload["autostart"]))
+                except OSError as exc:
+                    self._json(500, {"ok": False, "error": str(exc)})
+                    return
+                self.log(f"开机自启：{'开' if autostart_on() else '关'}  ← {self.client_address[0]}")
             if "model" in payload:
                 if payload["model"]:
                     get_asr()
@@ -692,7 +700,7 @@ class TransferHandler(BaseHTTPRequestHandler):
                     release_asr()
                     self.log(f"语音模型已释放  ← {self.client_address[0]}")
             self._json(200, {"ok": True, "autopaste": SETTINGS.autopaste,
-                             "model": _ASR is not None})
+                             "model": _ASR is not None, "autostart": autostart_on()})
             return
 
         if parsed.path == "/api/text":
@@ -1442,6 +1450,12 @@ class App:
             self._paint_tag()
         if self._tick % 3 == 0:
             self._poll_texts()
+        if self._tick % 12 == 0:
+            actual = autostart_on()
+            if actual != self.autostart_var.get():
+                self.autostart_var.set(actual)
+                self.autostart_switch.draw()
+                self.log(f"开机自启被改成了{'开' if actual else '关'}。")
         self.win.after(400, self._pump)
 
     def on_close(self):

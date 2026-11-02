@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>局域网传文件</title>
+<style>
+  :root { --ink:#1d1d1d; --accent:#2f6f4f; --line:#e3e5e1; --bg:#f4f5f2; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  img { -webkit-user-drag:none; user-drag:none; pointer-events:none; }
+  textarea, input { -webkit-user-select:text; user-select:text; }
+  [hidden] { display:none !important; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  header { padding:16px 18px 6px; }
+  h1 { margin:0; font-size:20px; }
+  .dir { margin-top:4px; font-size:12px; color:#777; word-break:break-all; }
+  main { padding:0 14px 40px; max-width:760px; margin:0 auto; }
+  .zone { margin-top:12px; background:#fff; border:2px dashed #c8d3cb; border-radius:14px;
+    padding:22px 16px; text-align:center; transition:.15s; }
+  .zone.hot { border-color:var(--accent); background:#eef5f0; }
+  .zone b { display:block; font-size:16px; }
+  .zone span { font-size:13px; color:#777; }
+  .row { display:flex; gap:10px; margin-top:12px; }
+  button { font:inherit; font-size:15px; padding:13px 10px; border:0; border-radius:11px;
+    background:var(--accent); color:#fff; cursor:pointer; }
+  .row button { flex:1; }
+  button.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); }
+  button:active { opacity:.75; }
+  .bar { margin-top:10px; }
+  .task { background:#fff; border-radius:11px; padding:9px 12px; margin-bottom:8px; font-size:13px;
+    border:1px solid var(--line); }
+  .task .n { display:flex; justify-content:space-between; gap:8px; }
+  .task .n i { font-style:normal; color:#777; }
+  .track { height:5px; background:#e9ebe7; border-radius:99px; margin-top:7px; overflow:hidden; }
+  .fill { height:100%; width:0; background:var(--accent); border-radius:99px; transition:width .1s; }
+  .fill.done { background:#67a37f; }
+  .fill.err { background:#c0564a; }
+  ul { list-style:none; margin:14px 0 0; padding:0; }
+  li { background:#fff; border-radius:12px; padding:11px 12px; margin-bottom:9px; display:flex;
+    align-items:center; gap:10px; border:1px solid var(--line); }
+  li .thumb { width:42px; height:42px; border-radius:8px; object-fit:cover; flex:0 0 42px;
+    background:#eef0ec; display:grid; place-items:center; font-size:11px; color:#888; }
+  li .meta { flex:1; min-width:0; }
+  li .nm { font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  li .sz { font-size:12px; color:#888; }
+  li a, li .del { flex:0 0 auto; font-size:13px; text-decoration:none; color:var(--accent);
+    padding:8px 11px; border-radius:9px; background:#eef2ee; }
+  li .del { color:#a8453a; background:#f6ebe9; }
+  .empty { text-align:center; color:#888; font-size:14px; padding:26px 0; }
+  .top { display:flex; align-items:center; justify-content:space-between; margin-top:18px; }
+  .top h2 { font-size:15px; margin:0; }
+  .top button { flex:0 0 auto; padding:7px 13px; font-size:13px; }
+  textarea { width:100%; margin-top:10px; padding:12px; background:#fff; color:var(--ink);
+    border:1px solid var(--line); border-radius:11px; font:inherit; font-size:16px;
+    resize:vertical; min-height:96px; line-height:1.6; }
+  textarea:focus { outline:none; border-color:var(--accent); }
+  .voice { margin-top:7px; font-size:12px; color:#999; }
+  .sw { display:flex; align-items:center; gap:9px; margin-top:10px; font-size:13px;
+    color:#555; cursor:pointer; user-select:none; }
+  .sw input { display:none; }
+  .sw .track { flex:0 0 auto; width:44px; height:24px; border-radius:99px; background:#d9d9d9;
+    position:relative; transition:background .15s; }
+  .sw .track::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px;
+    border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25);
+    transition:left .15s; }
+  .sw input:checked + .track { background:var(--accent); }
+  .sw input:checked + .track::after { left:23px; }
+  .hd { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .hdbts { display:flex; gap:8px; flex:0 0 auto; }
+  .hdbtn { position:relative; flex:0 0 auto; padding:6px 14px; border-radius:9px; background:#fff;
+    color:var(--accent); border:1px solid var(--line); font-size:14px; cursor:pointer; }
+  .hdbtn .dot { position:absolute; top:4px; right:6px; width:8px; height:8px; border-radius:50%;
+    background:#e0533f; display:none; }
+  .hdbtn.has-dot .dot { display:block; }
+  .sheet { position:fixed; inset:0; z-index:40; display:flex; align-items:flex-end;
+    background:rgba(0,0,0,.35); }
+  .sheet[hidden] { display:none; }
+  .sheet-card { width:100%; max-width:760px; margin:0 auto; max-height:86vh;
+    max-height:86dvh; overflow-y:auto; overscroll-behavior:contain;
+    background:var(--bg); border-radius:18px 18px 0 0; padding:16px 16px calc(18px + env(safe-area-inset-bottom));
+    transform:translateY(100%); transition:transform .22s ease; }
+  .sheet.open .sheet-card { transform:translateY(0); }
+  .sheet-head { display:flex; align-items:center; justify-content:space-between; }
+  .sheet-head h2 { margin:0; font-size:16px; }
+  .sheet-head button { flex:0 0 auto; padding:6px 13px; font-size:13px; }
+  .sheet-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .seg { display:flex; gap:3px; margin-top:12px; padding:3px; background:#ecede9; border-radius:10px; }
+  .seg span { flex:1; text-align:center; padding:8px 0; border-radius:8px; font-size:14px;
+    color:#666; cursor:pointer; }
+  .seg span.on { background:#fff; color:var(--ink); font-weight:600;
+    box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  #tsend { width:100%; margin-top:12px; padding:13px; font-size:16px; }
+  .mic { display:flex; align-items:center; justify-content:center; width:68px; height:68px;
+    margin:14px auto 6px; padding:0; border:0; border-radius:50%; background:var(--accent);
+    color:#fff; cursor:pointer; touch-action:none; user-select:none; -webkit-user-select:none;
+    transition:transform .12s, background .12s; }
+  .mic:active { transform:scale(.94); }
+  .mic.on { background:#c0453a; transform:scale(1.06); }
+  .mic.busy { background:#8aa897; }
+  .mic.cancel { background:#7c8480; transform:scale(.92); }
+  .mic.big { width:104px; height:104px; margin:0 auto; box-shadow:0 8px 22px rgba(47,111,79,.28); }
+  .sheet-card.tall { height:86dvh; display:flex; flex-direction:column; }
+  .voicepane { display:flex; flex-direction:column; flex:1; min-height:0; }
+  .preview { flex:1; min-height:0; margin-top:12px; padding:16px 18px; background:#fff;
+    border:1px solid var(--line); border-radius:14px; overflow-y:auto; }
+  #vinput { min-height:52px; margin-top:12px; font-size:15px; }
+  .ptext { font-size:21px; line-height:1.65; color:var(--ink); white-space:pre-wrap;
+    word-break:break-word; }
+  .pnote { margin-top:10px; font-size:12px; color:#9aa09a; }
+  .miczone { flex:0 0 auto; padding:20px 0 4px; text-align:center; }
+  .michint { margin-top:12px; font-size:13px; color:#8a8f88; }
+  .sheet-card { position:relative; }
+  .headbtns { display:flex; align-items:center; gap:8px; }
+  .iconbtn { width:34px; height:34px; padding:0; border-radius:9px; background:#fff;
+    border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+    color:#6b726c; cursor:pointer; }
+  .iconbtn.on { background:#eef2ee; color:var(--accent); border-color:#cfe0d5; }
+  .iconbtn svg { width:18px; height:18px; flex:0 0 auto; }
+  .popover { position:absolute; right:16px; top:58px; z-index:6; width:270px; background:#fff;
+    border:1px solid var(--line); border-radius:12px; padding:2px 14px;
+    box-shadow:0 10px 28px rgba(0,0,0,.14); }
+  .setrow { display:flex; align-items:center; justify-content:space-between; gap:14px;
+    padding:9px 0; }
+  .setrow + .setrow { border-top:1px solid #f0f0ec; }
+  .setrow .lbl { font-size:13px; color:#5c635d; }
+  .setrow .sw { margin:0; gap:0; }
+  #pane-text { display:flex; flex-direction:column; flex:1; min-height:0; }
+  #twrap { flex:1; min-height:0; overflow-y:auto; }
+  .sr { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
+    clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+  .tcard { background:#fff; border:1px solid var(--line); border-radius:12px; padding:11px 12px;
+    margin-bottom:9px; }
+  .tcard .tt { font-size:14px; white-space:pre-wrap; word-break:break-word;
+    max-height:9.5em; overflow:hidden; }
+  .tcard .tm { display:flex; align-items:center; justify-content:space-between; gap:8px;
+    margin-top:8px; font-size:12px; color:#888; }
+  .tcard .ops { display:flex; gap:8px; flex:0 0 auto; }
+  .tcard .ops span { padding:5px 11px; border-radius:8px; background:#eef2ee; color:var(--accent);
+    font-size:12px; cursor:pointer; }
+  .tcard .ops span.del { background:#f6ebe9; color:#a8453a; }
+  .hist { display:flex; width:100%; margin-top:10px; padding:9px 13px; align-items:center;
+    justify-content:space-between; background:#fff; color:#666; border:1px solid var(--line);
+    border-radius:10px; font-size:13px; cursor:pointer; }
+  .hist i { font-style:normal; transition:transform .15s; }
+  .hist[aria-expanded="true"] i { transform:rotate(180deg); }
+  #twrap { margin-top:10px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="hd">
+    <h1>局域网传文件</h1>
+    <div class="hdbts">
+      <button class="hdbtn" id="vbtn">语音</button>
+      <button class="hdbtn" id="tfab"><span class="dot"></span>文字</button>
+    </div>
+  </div>
+  <div class="dir" id="dir">读取中…</div>
+</header>
+
+<main>
+  <div class="zone" id="zone">
+    <b>点下面按钮选文件</b>
+    <span>电脑上拖文件到这里也可以</span>
+  </div>
+
+  <div class="row">
+    <button id="pick">选择文件</button>
+    <button class="ghost" id="cam">照片 / 视频</button>
+  </div>
+  <input type="file" id="files" multiple hidden>
+  <input type="file" id="photo" accept="image/*,video/*" multiple hidden>
+
+  <div class="bar" id="bar"></div>
+
+  <div class="top">
+    <h2>共享文件夹</h2>
+    <button class="ghost" id="refresh">刷新</button>
+  </div>
+  <ul id="list"></ul>
+  <div class="empty" id="empty" hidden>还没有文件</div>
+
+  <div class="sheet" id="tsheet" hidden>
+    <div class="sheet-card tall">
+      <div class="sheet-head">
+        <h2 id="ttitle">语音输入</h2>
+        <div class="headbtns">
+          <button class="iconbtn" id="gear" aria-label="设置">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+              <path d="M19.14 12.94a7.07 7.07 0 0 0 .06-.94c0-.32-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.1 7.1 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.58.24-1.12.56-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.62-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.23.4.32.61.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.58-.24 1.12-.56 1.62-.94l2.39.96c.21.1.48.01.61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/>
+            </svg>
+          </button>
+          <button class="ghost" id="tclose">关闭</button>
+        </div>
+      </div>
+      <div class="popover" id="setpop" hidden>
+        <div class="setrow"><span class="lbl">自动粘贴到电脑</span>
+          <label class="sw"><input type="checkbox" id="autopaste"><span class="track"></span></label></div>
+        <div class="setrow"><span class="lbl">开机自启动</span>
+          <label class="sw"><input type="checkbox" id="autostart"><span class="track"></span></label></div>
+        <div class="setrow"><span class="lbl">模型常驻内存（450MB）</span>
+          <label class="sw"><input type="checkbox" id="warm"><span class="track"></span></label></div>
+        <div class="setrow"><span class="lbl">显示输入框</span>
+          <label class="sw"><input type="checkbox" id="showinput"><span class="track"></span></label></div>
+      </div>
+      <div class="seg" id="tseg">
+        <span class="on" data-tab="voice">语音输入</span>
+        <span data-tab="text">文字互传</span>
+      </div>
+
+      <div id="pane-voice" class="voicepane">
+        <div class="preview">
+          <div class="ptext" id="ptext"></div>
+          <div class="pnote" id="pnote"></div>
+        </div>
+        <textarea id="vinput" rows="2" placeholder="也可以直接打字" hidden></textarea>
+        <div class="miczone">
+          <button id="rec" class="mic big" aria-label="按住说话">
+            <svg viewBox="0 0 24 24" width="44" height="44" fill="currentColor" aria-hidden="true">
+              <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3z"/>
+              <path d="M18 11a1 1 0 0 0-2 0 4 4 0 0 1-8 0 1 1 0 1 0-2 0 6 6 0 0 0 5 5.9V19H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-2.1A6 6 0 0 0 18 11z"/>
+            </svg>
+          </button>
+          <label class="mic big" id="reclabel" for="audiofile" hidden>
+            <svg viewBox="0 0 24 24" width="44" height="44" fill="currentColor" aria-hidden="true">
+              <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3z"/>
+              <path d="M18 11a1 1 0 0 0-2 0 4 4 0 0 1-8 0 1 1 0 1 0-2 0 6 6 0 0 0 5 5.9V19H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-2.1A6 6 0 0 0 18 11z"/>
+            </svg>
+          </label>
+          <div class="michint" id="michint">按住说话，松手自动发送</div>
+        </div>
+        <input type="file" id="audiofile" accept="audio/*" capture="user" class="sr">
+      </div>
+
+      <div id="pane-text" hidden>
+        <textarea id="tinput" rows="4" placeholder="粘贴或输入文字，传到电脑上"></textarea>
+        <button id="tsend">发 送</button>
+        <button class="hist" id="thist" aria-expanded="false">
+          <span id="tcount">历史记录</span><i>▾</i>
+        </button>
+        <div id="twrap" hidden><div id="tlist"></div></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+
+<script>
+const $ = s => document.querySelector(s);
+const api = p => fetch(p).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+const fmt = n => {
+  const u = ['B','KB','MB','GB','TB']; let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return n.toFixed(i === 0 ? 0 : 1) + u[i];
+};
+const time = t => new Date(t * 1000).toLocaleString('zh-CN', { hour12: false }).slice(5);
+
+function render(files) {
+  $('#dir').textContent = '文件夹：' + (window.rootPath || '');
+  const ul = $('#list');
+  ul.textContent = '';
+  $('#empty').hidden = files.length > 0;
+  for (const f of files) {
+    const li = document.createElement('li');
+    const url = '/f/' + encodeURIComponent(f.name);
+    const img = f.image
+      ? `<img class="thumb" loading="lazy" src="${url}?inline=1" alt="">`
+      : `<div class="thumb">${f.name.split('.').pop().slice(0,4).toUpperCase()}</div>`;
+    li.innerHTML = `${img}
+      <div class="meta"><div class="nm"></div><div class="sz">${fmt(f.size)} · ${time(f.mtime)}</div></div>
+      <a href="${url}">下载</a><button class="del">删</button>`;
+    li.querySelector('.nm').textContent = f.name;
+    li.querySelector('.del').onclick = () => {
+      if (!confirm('删除 ' + f.name + '？')) return;
+      fetch('/api/delete', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ name: f.name }) }).then(load).catch(() => alert('删除失败'));
+    };
+    ul.appendChild(li);
+  }
+}
+
+async function load() {
+  try {
+    const data = await api('/api/list');
+    window.rootPath = data.root;
+    render(data.files);
+  } catch (e) { $('#dir').textContent = '读取列表失败：' + e.message; }
+}
+
+let queue = [], running = false;
+
+function upload(file) {
+  const task = document.createElement('div');
+  task.className = 'task';
+  task.innerHTML = `<div class="n"><span class="t">等待中</span><i>${fmt(file.size)}</i></div>
+    <div class="track"><div class="fill"></div></div>`;
+  task.querySelector('.t').textContent = file.name.slice(0, 40);
+  $('#bar').prepend(task);
+  const fill = task.querySelector('.fill'), label = task.querySelector('.t');
+
+  return new Promise(resolve => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', '/u?name=' + encodeURIComponent(file.name));
+    xhr.upload.onprogress = e => {
+      if (!e.lengthComputable) return;
+      const pct = e.loaded / e.total * 100;
+      fill.style.width = pct + '%';
+      label.textContent = `${file.name.slice(0, 40)}  ${pct.toFixed(0)}%`;
+    };
+    xhr.onload = () => {
+      const ok = xhr.status === 200;
+      fill.classList.add(ok ? 'done' : 'err');
+      fill.style.width = '100%';
+      let name = file.name;
+      try { name = JSON.parse(xhr.responseText).name || name; } catch (e) {}
+      label.textContent = `${name}  ${ok ? '已保存' : '失败 ' + xhr.status}`;
+      ok ? load() : null;
+      setTimeout(() => task.remove(), ok ? 4000 : 8000);
+      resolve();
+    };
+    xhr.onerror = xhr.ontimeout = () => {
+      fill.classList.add('err'); label.textContent = file.name + '  传输中断';
+      resolve();
+    };
+    xhr.send(file);
+  });
+}
+
+async function run() {
+  if (running) return;
+  running = true;
+  while (queue.length) await upload(queue.shift());
+  running = false;
+}
+
+function add(list) {
+  const files = [...list].filter(f => f && f.size > 0);
+  if (!files.length) return;
+  files.forEach(f => queue.push(f));
+  run();
+}
+
+$('#pick').onclick = () => $('#files').click();
+$('#cam').onclick = () => $('#photo').click();
+['#files', '#photo'].forEach(sel => {
+  $(sel).onchange = e => { add(e.target.files); e.target.value = ''; };
+});
+$('#refresh').onclick = load;
+
+const zone = $('#zone');
+zone.onclick = () => $('#files').click();
+['dragenter','dragover'].forEach(t => zone.addEventListener(t, e => {
+  e.preventDefault(); zone.classList.add('hot');
+}));
+['dragleave','drop'].forEach(t => zone.addEventListener(t, e => {
+  e.preventDefault(); zone.classList.remove('hot');
+}));
+zone.addEventListener('drop', e => add(e.dataTransfer.files));
+document.addEventListener('paste', e => add(e.clipboardData.files));
+
+// ---------- 文字互传 ----------
+async function copyText(t) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(t);
+      return true;
+    }
+  } catch (e) {}
+  const ta = document.createElement('textarea');
+  ta.value = t;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, ta.value.length);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+  return ok;
+}
+
+let topId = null, topSeen = null;
+
+function renderTexts(items) {
+  const box = $('#tlist');
+  const list = (items || []).filter(x => (x.kind || 'text') !== 'voice');
+  $('#tcount').textContent = list.length ? `历史记录 · ${list.length} 条` : '历史记录（还没有）';
+  box.textContent = '';
+  for (const it of list) {
+    const card = document.createElement('div');
+    card.className = 'tcard';
+
+    const body = document.createElement('div');
+    body.className = 'tt';
+    body.textContent = it.text;
+
+    const meta = document.createElement('div');
+    meta.className = 'tm';
+    const info = document.createElement('span');
+    const when = new Date(it.time * 1000);
+    info.textContent = `${String(when.getMonth() + 1).padStart(2, '0')}-${String(when.getDate()).padStart(2, '0')} ` +
+      `${String(when.getHours()).padStart(2, '0')}:${String(when.getMinutes()).padStart(2, '0')} · ${it.text.length} 字`;
+
+    const ops = document.createElement('div');
+    ops.className = 'ops';
+    const copyBtn = document.createElement('span');
+    copyBtn.textContent = '复制';
+    copyBtn.onclick = async () => {
+      const ok = await copyText(it.text);
+      copyBtn.textContent = ok ? '已复制' : '长按文字复制';
+      if (!ok) body.style.userSelect = 'text';
+      setTimeout(() => { copyBtn.textContent = '复制'; }, 1600);
+    };
+    const delBtn = document.createElement('span');
+    delBtn.className = 'del';
+    delBtn.textContent = '删';
+    delBtn.onclick = () => {
+      if (!confirm('删除这条文字？')) return;
+      fetch('/api/text/delete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: it.id })
+      }).then(loadTexts);
+    };
+    ops.append(copyBtn, delBtn);
+    meta.append(info, ops);
+    card.append(body, meta);
+    box.append(card);
+  }
+  topId = list.length ? list[0].id : null;
+  if (topSeen === null) topSeen = topId;
+  if (sheetOpen()) {
+    topSeen = topId;
+  } else if (topId && topId !== topSeen) {
+    document.querySelector('#tfab').classList.add('has-dot');
+  }
+}
+
+async function loadTexts() {
+  try {
+    const data = await api('/api/text');
+    renderTexts(data.items);
+  } catch (e) {}
+}
+
+async function pushText(inputSel, btnSel, kind) {
+  const box = $(inputSel);
+  const text = box.value.trim();
+  if (!text) return;
+  box.value = '';
+  const btn = $(btnSel);
+  const old = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '发送中';
+  try {
+    const r = await fetch('/api/text', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, kind })
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+    if (kind === 'text') await loadTexts();
+  } catch (e) {
+    if (!box.value.trim()) box.value = text;
+    alert('发送失败：' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = old;
+  }
+}
+
+$('#tsend').onclick = () => pushText('#tinput', '#tsend', 'text');
+
+$('#vinput').addEventListener('input', () => typeFlush(1600));
+$('#vinput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    typeFlush(0);
+  }
+});
+
+const showInputCb = $('#showinput');
+function applyShowInput(on) {
+  showInputCb.checked = on;
+  $('#vinput').hidden = !on;
+}
+applyShowInput(localStorage.getItem('showInput') === '1');
+showInputCb.onchange = () => {
+  applyShowInput(showInputCb.checked);
+  localStorage.setItem('showInput', showInputCb.checked ? '1' : '0');
+};
+
+let typeTimer = null;
+function typeFlush(delay) {
+  clearTimeout(typeTimer);
+  typeTimer = setTimeout(() => {
+    const box = $('#vinput');
+    const text = box.value.trim();
+    if (!text) return;
+    box.value = '';
+    setPreview(text, '已发送');
+    sendVoice(text);
+  }, delay);
+}
+
+function setPreview(text, note) {
+  $('#ptext').textContent = text || '';
+  $('#pnote').textContent = note || '';
+}
+
+async function sendVoice(text) {
+  if (!text) return;
+  try {
+    const r = await fetch('/api/text', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, kind: 'voice' })
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+    setPreview(text, '已发送');
+  } catch (e) {
+    setPreview(text, '发送失败：' + e.message);
+  }
+}
+
+const recBtn = $('#rec');
+const canMic = !!(window.isSecureContext && navigator.mediaDevices &&
+                  navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+let mediaRec = null, mediaChunks = [], recStartedAt = 0;
+let recStartY = 0, willCancel = false;
+let partialBusy = false, lastPartialAt = 0;
+const CANCEL_DIST = 70;
+const HINT = '按住说话，松手自动发送';
+
+const recLabel = $('#reclabel');
+recLabel.addEventListener('contextmenu', e => e.preventDefault());
+
+if (!canMic) {
+  recBtn.hidden = true;
+  recLabel.hidden = false;
+} else {
+  recBtn.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+  recBtn.addEventListener('contextmenu', e => e.preventDefault());
+  recBtn.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (recBtn.setPointerCapture) recBtn.setPointerCapture(e.pointerId);
+    recStartY = e.clientY;
+    willCancel = false;
+    startRec();
+  });
+  recBtn.addEventListener('pointermove', e => {
+    if (!mediaRec) return;
+    const cancel = (recStartY - e.clientY) > CANCEL_DIST;
+    if (cancel !== willCancel) {
+      willCancel = cancel;
+      recBtn.classList.toggle('cancel', cancel);
+      $('#michint').textContent = cancel ? '松手取消' : '松手发送';
+    }
+  });
+  recBtn.addEventListener('pointerup', e => {
+    e.preventDefault();
+    stopRec(willCancel);
+  });
+  recBtn.addEventListener('pointercancel', () => stopRec(true));
+  window.addEventListener('pointerup', () => { if (mediaRec) stopRec(willCancel); });
+}
+
+function maybePartial() {
+  if (!mediaRec || partialBusy || willCancel) return;
+  const now = Date.now();
+  if (now - recStartedAt < 800 || now - lastPartialAt < 1100) return;
+  lastPartialAt = now;
+  partialBusy = true;
+  const blob = new Blob(mediaChunks, { type: mediaRec.mimeType || 'audio/webm' });
+  fetch('/api/asr?partial=1', {
+    method: 'POST', headers: { 'Content-Type': blob.type }, body: blob
+  }).then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (d && d.text && mediaRec && !willCancel) setPreview(d.text, '识别中…');
+    })
+    .catch(() => {})
+    .finally(() => { partialBusy = false; });
+}
+
+function resetRecUi() {
+  recBtn.classList.remove('on', 'busy', 'cancel');
+  $('#michint').textContent = HINT;
+}
+
+async function startRec() {
+  if (mediaRec) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaChunks = [];
+    const type = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+      : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '');
+    mediaRec = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    mediaRec.ondataavailable = e => {
+      if (e.data.size) mediaChunks.push(e.data);
+      maybePartial();
+    };
+    mediaRec.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(mediaChunks, { type: mediaRec.mimeType || 'audio/webm' });
+      const secs = (Date.now() - recStartedAt) / 1000;
+      const cancelled = willCancel;
+      mediaRec = null;
+      willCancel = false;
+      recBtn.classList.remove('cancel');
+      $('#michint').textContent = HINT;
+      if (cancelled) { setPreview('', '已取消'); resetRecUi(); return; }
+      if (secs > 0.4 && blob.size > 1000) sendAudio(blob);
+      else resetRecUi();
+    };
+    mediaRec.start(800);
+    recStartedAt = Date.now();
+    lastPartialAt = 0;
+    recBtn.classList.add('on');
+    $('#michint').textContent = '松手发送，上滑取消';
+  } catch (e) {
+    resetRecUi();
+    alert('拿不到麦克风：' + e.message);
+  }
+}
+
+function stopRec(cancel) {
+  if (cancel) willCancel = true;
+  if (mediaRec && mediaRec.state !== 'inactive') mediaRec.stop();
+  recBtn.classList.remove('on');
+  if (!willCancel) recBtn.classList.add('busy');
+}
+
+async function sendAudio(blob) {
+  recBtn.classList.add('busy');
+  try {
+    const r = await fetch('/api/asr', {
+      method: 'POST', headers: { 'Content-Type': blob.type || 'audio/webm' }, body: blob
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || r.status);
+    const text = (d.text || '').trim();
+    if (!text) { setPreview('', '没听清，再说一次'); return; }
+    setPreview(text, '识别完成');
+    sendVoice(text);
+  } catch (e) {
+    alert('识别失败：' + e.message);
+  } finally {
+    recBtn.classList.remove('busy');
+  }
+}
+
+$('#audiofile').onchange = e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (file) sendAudio(file);
+};
+
+$('#tinput').addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') $('#tsend').click();
+});
+
+function showPane(name) {
+  $('#pane-voice').hidden = name !== 'voice';
+  $('#pane-text').hidden = name !== 'text';
+  document.querySelector('.sheet-card').classList.toggle('tall', name === 'voice');
+  $('#ttitle').textContent = name === 'voice' ? '语音输入' : '文字互传';
+  document.querySelectorAll('#tseg span').forEach(s =>
+    s.classList.toggle('on', s.dataset.tab === name));
+}
+
+document.querySelectorAll('#tseg span').forEach(s => {
+  s.onclick = () => {
+    showPane(s.dataset.tab);
+    if (s.dataset.tab === 'text') loadTexts();
+    setTimeout(() => {
+      if (s.dataset.tab === 'text') $('#tinput').focus();
+    }, 120);
+  };
+});
+
+$('#thist').onclick = () => {
+  const wrap = $('#twrap'), btn = $('#thist');
+  const open = wrap.hidden;
+  wrap.hidden = !open;
+  btn.setAttribute('aria-expanded', String(open));
+  if (open) loadTexts();
+};
+
+async function loadSettings() {
+  try {
+    const s = await api('/api/settings');
+    const cb = $('#autopaste');
+    if (document.activeElement !== cb) cb.checked = !!s.autopaste;
+    const warm = $('#warm');
+    if (document.activeElement !== warm && !warm.disabled) warm.checked = !!s.model;
+    const auto = $('#autostart');
+    if (document.activeElement !== auto && !auto.disabled) auto.checked = !!s.autostart;
+  } catch (e) {}
+}
+
+$('#autostart').onchange = async e => {
+  const cb = e.target;
+  cb.disabled = true;
+  try {
+    const r = await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ autostart: cb.checked })
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+    const d = await r.json();
+    cb.checked = !!d.autostart;
+  } catch (err) {
+    cb.checked = !cb.checked;
+    alert('设置失败：' + err.message);
+  } finally {
+    cb.disabled = false;
+  }
+};
+
+$('#warm').onchange = async e => {
+  const cb = e.target;
+  cb.disabled = true;
+  try {
+    const r = await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: cb.checked })
+    });
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    cb.checked = !!d.model;
+  } catch (err) {
+    cb.checked = !cb.checked;
+    alert('设置失败：' + err.message);
+  } finally {
+    cb.disabled = false;
+  }
+};
+
+$('#autopaste').onchange = async e => {
+  try {
+    const r = await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ autopaste: e.target.checked })
+    });
+    if (!r.ok) throw new Error(r.status);
+  } catch (err) {
+    e.target.checked = !e.target.checked;
+    alert('保存失败：' + err.message);
+  }
+};
+
+const sheetEl = $('#tsheet');
+const fabEl = $('#tfab');
+
+function sheetOpen() { return !sheetEl.hidden; }
+
+let lockedY = 0, closingSheet = false;
+
+function lockScroll() {
+  lockedY = window.scrollY || 0;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${lockedY}px`;
+  document.body.style.left = '0';
+  document.body.style.right = '0';
+  document.body.style.width = '100%';
+}
+
+function unlockScroll() {
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.left = '';
+  document.body.style.right = '';
+  document.body.style.width = '';
+  window.scrollTo(0, lockedY);
+}
+
+function openSheet(name) {
+  showPane(name || 'voice');
+  lockScroll();
+  sheetEl.hidden = false;
+  requestAnimationFrame(() => sheetEl.classList.add('open'));
+  $('#tfab').classList.remove('has-dot');
+  if (name === 'text') {
+    if (topId) topSeen = topId;
+    loadTexts();
+  }
+  if (name === 'text') {
+    setTimeout(() => {
+      if (!sheetEl.hidden) $('#tinput').focus({ preventScroll: true });
+    }, 240);
+  } else {
+    setPreview('', '');
+  }
+}
+
+$('#gear').onclick = e => {
+  e.stopPropagation();
+  const pop = $('#setpop');
+  pop.hidden = !pop.hidden;
+  $('#gear').classList.toggle('on', !pop.hidden);
+};
+document.addEventListener('click', e => {
+  const pop = $('#setpop');
+  if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('#gear')) {
+    pop.hidden = true;
+    $('#gear').classList.remove('on');
+  }
+});
+
+function closeSheet() {
+  closingSheet = true;
+  $('#setpop').hidden = true;
+  $('#gear').classList.remove('on');
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  sheetEl.classList.remove('open');
+  setTimeout(() => {
+    sheetEl.hidden = true;
+    unlockScroll();
+    closingSheet = false;
+  }, 220);
+}
+
+$('#vbtn').onclick = () => openSheet('voice');
+fabEl.onclick = () => openSheet('text');
+$('#tclose').onclick = closeSheet;
+sheetEl.addEventListener('click', e => { if (e.target === sheetEl) closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheetOpen()) closeSheet(); });
+document.addEventListener('contextmenu', e => {
+  if (!e.target.closest('a, textarea, input')) e.preventDefault();
+});
+
+load();
+loadTexts();
+loadSettings();
+setInterval(load, 15000);
+setInterval(loadTexts, 5000);
+setInterval(loadSettings, 5000);
+</script>
+</body>
+</html>
